@@ -1,6 +1,6 @@
 {
-    "name": "dkulyk/range",
-    "description": "Lazy ranges library for PHP.",
+    "name": "dkulyk/sequence",
+    "description": "Lazy sequence library for PHP.",
     "license": "MIT",
     "authors": [
         {
@@ -12,8 +12,8 @@
         "php": ">=5.6"
     },
     "autoload": {
-        "files": [
-            "src/ranges.php"
-        ]
+        "psr-4":{
+            "DKulyk\\Sequence\\":"src/"
+        }
     }
 }
