@@ -18,11 +18,11 @@ require_once __DIR__.'/vendor/autoload.php';
 
 use DKulyk\Sequence\Sequence;
 
-function fibonacci(&$value, $a = 0, $b = 1)
+function fibonacci(&$value, $a = 1, $b = 2)
 {
-    $value = $a + $b;
-    return function (&$v) use ( $value, $b) {
-        return fibonacci($v, $b, $value);
+    $value = $a;
+    return function (&$v) use ($a, $b) {
+        return fibonacci($v, $b, $a + $b);
     };
 }
 
