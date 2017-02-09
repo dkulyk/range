@@ -1,0 +1,17 @@
+{
+    "name": "dkulyk/range",
+    "description": "Lazy ranges library for PHP.",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Kulyk Dmytro",
+            "email": "lnkvisitor.ts@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.6"
+    },
+    "autoload": {
+
+    }
+}
