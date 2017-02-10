@@ -35,8 +35,6 @@ class Sequence extends Iterator
         $this->initial = function (&$value) use ($args, $sequence) {
             return $sequence($value, ...$args);
         };
-
-        $this->rewind();
     }
 
     /**

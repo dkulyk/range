@@ -42,6 +42,35 @@ class Iterator implements \Iterator
     }
 
     /**
+     * Fetch current value from iterator.
+     *
+     * @param bool $first
+     */
+    private function fetch($first = false)
+    {
+        $next = function () use (&$first) {
+            if ($first) {
+                $first = false;
+            } else {
+                $this->iterator->next();
+            }
+            if ($this->valid()) {
+                $this->value = $this->iterator->current();
+                return true;
+            }
+            return false;
+        };
+
+        if ($this->valid()) {
+            if ($this->handler !== null) {
+                $this->terminate = ($this->handler)($next, $this) === false;
+            } else {
+                $this->terminate = $next();
+            }
+        }
+    }
+
+    /**
      * Limit sequence.
      *
      * @param int $limit
@@ -50,8 +79,11 @@ class Iterator implements \Iterator
      */
     public function limit($limit)
     {
-        return new self($this, function () use (&$limit) {
-            return --$limit > 0;
+        return new self($this, function (callable $next) use (&$limit) {
+            if (--$limit >= 0) {
+                return $next();
+            }
+            return false;
         });
     }
 
@@ -64,8 +96,12 @@ class Iterator implements \Iterator
      */
     public function map(callable $callback)
     {
-        return new self($this, function (self $sequence, $key, &$value) use ($callback) {
-            $value = $callback($value, $key);
+        return new self($this, function (callable $next, self $sequence) use ($callback) {
+            if ($next()) {
+                $sequence->value = $callback($sequence->current(), $sequence->key());
+                return true;
+            }
+            return false;
         });
     }
 
@@ -83,9 +119,9 @@ class Iterator implements \Iterator
             return $this;
         }
 
-        return new self(new self($this, function (self $sequence, $key, &$value) use ($callback) {
-            return $callback !== null && !$callback($value, $key);
-        }));
+        return new self($this, function (callable $next, self $sequence) use ($callback) {
+            return $next() && !$callback($sequence->current(), $sequence->key());
+        });
     }
 
     /**
@@ -97,19 +133,14 @@ class Iterator implements \Iterator
      */
     public function filter(callable $callback)
     {
-        return new self($this, function (self $sequence, $key, &$value) use ($callback) {
-            while (!$callback($value, $key)) {
-                $sequence->next();
-                if (!$sequence->iterator->valid()) {
-                    break;
-                }
-                $value = $sequence->iterator->current();
+        return new self($this, function (callable $next, self $sequence) use ($callback) {
+            while ($next() && !$callback($sequence->current(), $sequence->key())) {
             }
         });
     }
 
     /**
-     * Reduce sequence.
+     * Reduce limited sequence.
      *
      * @param callable $callback
      * @param mixed    $initial
@@ -118,8 +149,8 @@ class Iterator implements \Iterator
      */
     public function reduce(callable $callback, $initial = null)
     {
-        foreach ($this as $value) {
-            $initial = $callback($initial, $value, $this->key());
+        foreach ($this as $key => $value) {
+            $initial = $callback($initial, $value, $key);
         }
 
         return $initial;
@@ -128,14 +159,14 @@ class Iterator implements \Iterator
     /**
      * Get limited sequence as array.
      *
+     * @param bool $use_keys [optional] <p>
+     * Whether to use the iterator element keys as index.
+     * </p>
      * @return array
      */
-    public function all()
+    public function all($use_keys = true)
     {
-        return $this->reduce(function ($array, $value, $key) {
-            $array[$key] = $value;
-            return $array;
-        }, []);
+        return iterator_to_array($this, $use_keys);
     }
 
     /**
@@ -143,16 +174,15 @@ class Iterator implements \Iterator
      */
     public function valid()
     {
-        if (!$this->terminate && $this->iterator->valid()) {
-            $this->value = $this->iterator->current();
-            if ($this->handler !== null) {
-                $this->terminate = ($this->handler)($this, $this->key(), $this->value) === false;
-            }
+        return !$this->terminate && $this->iterator->valid();
+    }
 
-            return $this->iterator->valid();
-        }
-
-        return false;
+    /**
+     * {@inheritdoc}
+     */
+    public function next()
+    {
+        $this->fetch(false);
     }
 
     /**
@@ -169,6 +199,7 @@ class Iterator implements \Iterator
     public function rewind()
     {
         $this->iterator->rewind();
+        $this->fetch(true);
     }
 
     /**
@@ -177,13 +208,5 @@ class Iterator implements \Iterator
     public function key()
     {
         return $this->iterator->key();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function next()
-    {
-        $this->iterator->next();
     }
 }
