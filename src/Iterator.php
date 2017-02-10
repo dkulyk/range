@@ -30,6 +30,11 @@ class Iterator implements \Iterator
     protected $value;
 
     /**
+     * @var mixed
+     */
+    protected $key;
+
+    /**
      * Iterator constructor.
      *
      * @param \Iterator     $iterator
@@ -55,6 +60,7 @@ class Iterator implements \Iterator
                 $this->iterator->next();
             }
             if ($this->valid()) {
+                $this->key = $this->iterator->key();
                 $this->value = $this->iterator->current();
                 return true;
             }
@@ -118,7 +124,7 @@ class Iterator implements \Iterator
     {
         return $this->handle(function (callable $next, self $sequence) use ($callback) {
             if ($next()) {
-                $sequence->value = $callback($sequence->current(), $sequence->key());
+                $sequence->setValue($callback($sequence->current(), $sequence->key()));
                 return true;
             }
             return false;
@@ -227,6 +233,26 @@ class Iterator implements \Iterator
      */
     public function key()
     {
-        return $this->iterator->key();
+        return $this->key;
+    }
+
+    /**
+     * Replace current key.
+     *
+     * @param mixed $value
+     */
+    public function setValue($value)
+    {
+        $this->value = $value;
+    }
+
+    /**
+     * Replace current value.
+     *
+     * @param mixed $key
+     */
+    public function setKey($key)
+    {
+        $this->key = $key;
     }
 }
