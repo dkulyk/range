@@ -65,13 +65,33 @@ class Iterator implements \Iterator
             if ($this->handler !== null) {
                 $this->terminate = ($this->handler)($next, $this) === false;
             } else {
-                $this->terminate = $next();
+                $next();
             }
         }
     }
 
     /**
-     * Limit sequence.
+     * Get a new iterator with the specified handler.
+     * ```
+     *      //Iterated until the value is not equal to 3
+     *      (new Iterator(new ArrayIterator([1,2,3,4,5])))
+     *          ->handle(function (callable $next, Iterator $sequence) {
+     *              return $next() && $sequence->current() !== 3;
+     *          })
+     *          ->all()
+     * ```
+     *
+     * @param callable $callback Return false for end sequence
+     *
+     * @return Iterator
+     */
+    public function handle(callable $callback)
+    {
+        return new self($this, $callback);
+    }
+
+    /**
+     * Sequence length limit.
      *
      * @param int $limit
      *
@@ -79,7 +99,7 @@ class Iterator implements \Iterator
      */
     public function limit($limit)
     {
-        return new self($this, function (callable $next) use (&$limit) {
+        return $this->handle(function (callable $next) use (&$limit) {
             if (--$limit >= 0) {
                 return $next();
             }
@@ -96,7 +116,7 @@ class Iterator implements \Iterator
      */
     public function map(callable $callback)
     {
-        return new self($this, function (callable $next, self $sequence) use ($callback) {
+        return $this->handle(function (callable $next, self $sequence) use ($callback) {
             if ($next()) {
                 $sequence->value = $callback($sequence->current(), $sequence->key());
                 return true;
@@ -106,7 +126,7 @@ class Iterator implements \Iterator
     }
 
     /**
-     * Terminate sequence.
+     * Ending sequence with the condition.
      *
      * @param callable|null $callback
      *
@@ -119,13 +139,13 @@ class Iterator implements \Iterator
             return $this;
         }
 
-        return new self($this, function (callable $next, self $sequence) use ($callback) {
+        return $this->handle(function (callable $next, self $sequence) use ($callback) {
             return $next() && !$callback($sequence->current(), $sequence->key());
         });
     }
 
     /**
-     * Filter sequence.
+     * Sequence filtering.
      *
      * @param callable $callback
      *
@@ -133,7 +153,7 @@ class Iterator implements \Iterator
      */
     public function filter(callable $callback)
     {
-        return new self($this, function (callable $next, self $sequence) use ($callback) {
+        return $this->handle(function (callable $next, self $sequence) use ($callback) {
             while ($next() && !$callback($sequence->current(), $sequence->key())) {
             }
         });
