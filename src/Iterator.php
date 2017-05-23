@@ -1,13 +1,18 @@
 <?php
+declare(strict_types=1);
 
 namespace DKulyk\Sequence;
+
+use Iterator as SPLIterator;
+use IteratorAggregate;
+use Traversable;
 
 /**
  * Class Iterator
  *
  * @package DKulyk\Sequence
  */
-class Iterator implements \Iterator
+class Iterator implements SPLIterator
 {
     /**
      * @var \Iterator
@@ -37,11 +42,14 @@ class Iterator implements \Iterator
     /**
      * Iterator constructor.
      *
-     * @param \Iterator     $iterator
+     * @param \Traversable  $iterator
      * @param callable|null $handler
      */
-    public function __construct(\Iterator $iterator, callable $handler = null)
+    public function __construct(Traversable $iterator, callable $handler = null)
     {
+        if ($iterator instanceof IteratorAggregate) {
+            $iterator = $iterator->getIterator();
+        }
         $this->iterator = $iterator;
         $this->handler = $handler;
     }
@@ -51,7 +59,7 @@ class Iterator implements \Iterator
      *
      * @param bool $first
      */
-    private function fetch($first = false)
+    private function fetch(bool $first = false)
     {
         $next = function () use (&$first) {
             if ($first) {
@@ -91,7 +99,7 @@ class Iterator implements \Iterator
      *
      * @return Iterator
      */
-    public function handle(callable $callback)
+    public function handle(callable $callback): Iterator
     {
         return new self($this, $callback);
     }
@@ -103,7 +111,7 @@ class Iterator implements \Iterator
      *
      * @return Iterator
      */
-    public function limit($limit)
+    public function limit(int $limit): Iterator
     {
         return $this->handle(function (callable $next) use (&$limit) {
             if (--$limit >= 0) {
@@ -114,13 +122,25 @@ class Iterator implements \Iterator
     }
 
     /**
+     * Call function on each value.
+     *
+     * @param callable $callback
+     */
+    public function each(callable $callback)
+    {
+        foreach ($this as $key => $value) {
+            $callback($value, $key);
+        }
+    }
+
+    /**
      * Map sequence.
      *
      * @param callable $callback
      *
      * @return Iterator
      */
-    public function map(callable $callback)
+    public function map(callable $callback): Iterator
     {
         return $this->handle(function (callable $next, self $sequence) use ($callback) {
             if ($next()) {
@@ -138,7 +158,7 @@ class Iterator implements \Iterator
      *
      * @return Iterator
      */
-    public function terminate(callable $callback = null)
+    public function terminate(callable $callback = null): Iterator
     {
         if ($callback === null) {
             $this->terminate = true;
@@ -157,10 +177,11 @@ class Iterator implements \Iterator
      *
      * @return Iterator
      */
-    public function filter(callable $callback)
+    public function filter(callable $callback): Iterator
     {
         return $this->handle(function (callable $next, self $sequence) use ($callback) {
             while ($next() && !$callback($sequence->current(), $sequence->key())) {
+                continue;
             }
         });
     }
@@ -190,7 +211,7 @@ class Iterator implements \Iterator
      * </p>
      * @return array
      */
-    public function all($use_keys = true)
+    public function all($use_keys = true): array
     {
         return iterator_to_array($this, $use_keys);
     }
@@ -198,7 +219,7 @@ class Iterator implements \Iterator
     /**
      * {@inheritdoc}
      */
-    public function valid()
+    public function valid(): bool
     {
         return !$this->terminate && $this->iterator->valid();
     }
